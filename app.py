@@ -115,6 +115,7 @@ if __name__ == "__main__":
         response = chat_completion(
             message_list=st.session_state.messages,
             model="gpt-3.5-turbo-16k",
+            max_tokens=2048,
             stream=True,
         )
         answer = response["choices"][0]["message"]["content"]
@@ -124,5 +125,6 @@ if __name__ == "__main__":
         code_block = extract_code(answer)
         if len(code_block) >= 1:
             render_html(StringIO(code_block[0]))
+            render_copy_html_button(html_content)
 
     # multi_page_inner_logic()
