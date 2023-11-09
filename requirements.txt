@@ -2,3 +2,6 @@ streamlit
 st_click_detector
 openai
 transformers
+aiohttp
+websockets
+websocket-client
