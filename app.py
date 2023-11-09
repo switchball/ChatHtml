@@ -1,10 +1,15 @@
 import re
 from io import StringIO
-
+from typing import List
+import time
 import streamlit as st
 import streamlit.components.v1 as stc
+import asyncio
+
 from st_click_detector import click_detector as did_click
 
+from chat_models.spark_model import SparkClient
+from juicy import clickable_select
 from utils import chat_completion
 
 
@@ -14,7 +19,7 @@ def render_html(html_file):
     )
     st.write("页面预览")
     if isinstance(html_file, StringIO):
-        stc.html(html_file.read(), height=500)
+        stc.html(html_file.read(), height=750, scrolling=1)
     else:
         with open(html_file, "r", encoding="utf-8") as f:
             stc.html(f.read())
@@ -54,11 +59,32 @@ def multi_page_inner_logic():
     multi_pages[current_page][1]()
 
 
+def show_conversation():
+    """展示对话的内容"""
+    if 'messages' in st.session_state:
+        for message in st.session_state['messages']:
+            st.chat_message(message["role"]).write(message["content"])
+
+
+async def chat_completion_async(message_list):
+    client = SparkClient(
+        app_id=st.secrets["Spark"]["APP_ID"],
+        api_secret=st.secrets["Spark"]["API_SECRET"],
+        api_key=st.secrets["Spark"]["API_KEY"],
+    )
+    answer = await client.chat_completion_async(message_list)
+    return answer
+
+
+
 if __name__ == "__main__":
     st.set_page_config(
         page_title="Chat Html", layout="wide", page_icon=":speech_balloon:"
     )
     st.title("Chat Html")
+    
+    x = clickable_select(["星火V3", "星火V2", "gpt3-16k"])
+    st.write(f'you select {x}')
 
     x = did_click(
         '<a href="#" id="reset">Reset</a> / <a href="#" id="foo">Waha</a>', None
@@ -67,6 +93,13 @@ if __name__ == "__main__":
     if x:
         st.info("已重置")
         del st.session_state["messages"]
+
+    # with st.empty():
+    #     for seconds in range(3):
+    #         st.write(f"⏳ {seconds} seconds have passed")
+    #         time.sleep(1)
+    #     st.write("✔️ 1 minute over!")
+
 
     uploaded_file = st.sidebar.file_uploader(
         "Upload your html file here...", type=["html"]
@@ -107,24 +140,41 @@ if __name__ == "__main__":
 
     demands = st.chat_input()
     if demands is not None:
+        st.session_state.messages.append({"role": "user", "content": demands})
         st.info(demands)
 
-        st.session_state.messages.append({"role": "user", "content": demands})
-        st.chat_message("user").write(demands)
+    show_conversation()
+    if st.session_state.messages[-1]["role"] == "assistant":
+        answer = st.session_state.messages[-1]["content"]
+        code_block = extract_code(answer)
+        if len(code_block) >= 1:
+            render_html(StringIO(code_block[0]))
+            render_copy_html_button(code_block[0])
 
-        response = chat_completion(
-            message_list=st.session_state.messages,
-            model="gpt-3.5-turbo-16k",
-            max_tokens=2048,
-            stream=True,
-        )
-        answer = response["choices"][0]["message"]["content"]
-        st.session_state.messages.append({"role": "assistant", "content": answer})
+    if st.session_state.messages[-1]["role"] == "user":
+
+        tic = time.time()
+        answer = asyncio.run(chat_completion_async(message_list=st.session_state.messages))
+
+        st.write(f'used {time.time() - tic}')
+
+        # response = chat_completion(
+        #     message_list=st.session_state.messages,
+        #     model="gpt-3.5-turbo-16k",
+        #     max_tokens=2048,
+        #     stream=True,
+        # )
+        # answer = response["choices"][0]["message"]["content"]
+        if 'messages' in st.session_state:
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+        else:
+            st.warning('no messages!')
+        st.write(f'fin {time.time()}')
         st.chat_message("assistant").write(answer)
 
         code_block = extract_code(answer)
         if len(code_block) >= 1:
             render_html(StringIO(code_block[0]))
-            render_copy_html_button(html_content)
+            render_copy_html_button(code_block[0])
 
     # multi_page_inner_logic()
