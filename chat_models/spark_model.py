@@ -22,11 +22,13 @@ from pydantic import BaseModel, Field
 
 class SparkChatConfig(BaseModel):
     """星火聊天配置"""
+
     domain: str = Field(default="generalv2", description="api版本")
     temperature: float = Field(
         default=0.5,
-        ge=0, le=1,
-        description="取值为[0,1],默认为0.5, 核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高"
+        ge=0,
+        le=1,
+        description="取值为[0,1],默认为0.5, 核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高",
     )
     max_tokens: int = Field(default=2048, le=8192, ge=1, description="模型回答的tokens的最大长度")
     top_k: int = Field(default=4, le=6, ge=1, description="从k个候选中随机选择⼀个（⾮等概率）")
@@ -37,20 +39,24 @@ class SparkMessageStatus(Enum):
     星火消息响应状态
     0-代表首个文本结果；1-代表中间文本结果；2-代表最后一个文本结果
     """
+
     FIRST_RET = 0
     MID_RET = 1
     END_RET = 2
-    
+
+
 SparkChatUsageInfo = dict
 
-    
+
 class SparkMsgInfo(BaseModel):
     """星火消息信息"""
 
     msg_sid: str = Field(default=uuid.uuid4().hex, description="消息id，用于唯一标识⼀条消息")
     msg_type: str = Field(default="text", description="消息类型，目前仅支持text")
     msg_content: str = Field(default="", description="消息内容")
-    msg_status: SparkMessageStatus = Field(default=SparkMessageStatus.FIRST_RET, description="消息状态")
+    msg_status: SparkMessageStatus = Field(
+        default=SparkMessageStatus.FIRST_RET, description="消息状态"
+    )
 
     usage_info: Optional[SparkChatUsageInfo] = Field(default=None, description="消息使用信息")
 
@@ -63,11 +69,11 @@ class SparkClient:
     }
 
     def __init__(
-            self,
-            app_id: str,
-            api_secret: str,
-            api_key: str,
-            chat_conf: SparkChatConfig = None
+        self,
+        app_id: str,
+        api_secret: str,
+        api_key: str,
+        chat_conf: SparkChatConfig = None,
     ):
         self.app_id = app_id
         self.api_secret = api_secret
@@ -78,17 +84,16 @@ class SparkClient:
 
     def build_chat_params(self, msg_context_list=None, uid: str = None):
         """构造请求参数"""
-        return json.dumps({
-            "header": self._build_header(uid=uid),
-            "parameter": self._build_parameter(),
-            "payload": self._build_payload(msg_context_list)
-        })
-    
+        return json.dumps(
+            {
+                "header": self._build_header(uid=uid),
+                "parameter": self._build_parameter(),
+                "payload": self._build_payload(msg_context_list),
+            }
+        )
+
     def _build_header(self, uid=None):
-        return {
-            "app_id": self.app_id,
-            "uid": uid or uuid.uuid4().hex
-        }
+        return {"app_id": self.app_id, "uid": uid or uuid.uuid4().hex}
 
     def _build_parameter(self):
         return {
@@ -96,7 +101,7 @@ class SparkClient:
                 "domain": self.chat_conf.domain,
                 "temperature": self.chat_conf.temperature,
                 "max_tokens": self.chat_conf.max_tokens,
-                "top_k": self.chat_conf.top_k
+                "top_k": self.chat_conf.top_k,
             }
         }
 
@@ -150,23 +155,24 @@ class SparkClient:
         signature_origin += "GET " + path + " HTTP/1.1"
 
         # 进行hmac-sha256进行加密
-        signature_sha = hmac.new(self.api_secret.encode('utf-8'), signature_origin.encode('utf-8'),
-                                digestmod=hashlib.sha256).digest()
+        signature_sha = hmac.new(
+            self.api_secret.encode("utf-8"),
+            signature_origin.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).digest()
 
-        signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding='utf-8')
+        signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding="utf-8")
 
         authorization_origin = f'api_key="{self.api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
 
-        authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode(encoding='utf-8')
+        authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
+            encoding="utf-8"
+        )
 
         # 将请求的鉴权参数组合为字典
-        v = {
-            "authorization": authorization,
-            "date": date,
-            "host": host
-        }
+        v = {"authorization": authorization, "date": date, "host": host}
         # 拼接鉴权参数，生成url
-        sign_url = self.server_uri + '?' + urlencode(v)
+        sign_url = self.server_uri + "?" + urlencode(v)
         return sign_url
 
     async def aiohttp_chat(self, msg_context_list: list, uid: str = None):
@@ -195,4 +201,3 @@ class SparkClient:
         async for msg_info in self.achat(message_list):
             print(msg_info)
         return msg_info.msg_content
-    

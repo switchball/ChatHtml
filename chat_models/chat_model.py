@@ -17,5 +17,5 @@ class ChatModel:
 
     # @overload
     def chat_completion_gen(self, message_list):
-        """ 返回一个迭代器 """
+        """返回一个迭代器"""
         pass

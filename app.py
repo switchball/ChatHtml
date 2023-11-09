@@ -61,8 +61,8 @@ def multi_page_inner_logic():
 
 def show_conversation():
     """展示对话的内容"""
-    if 'messages' in st.session_state:
-        for message in st.session_state['messages']:
+    if "messages" in st.session_state:
+        for message in st.session_state["messages"]:
             st.chat_message(message["role"]).write(message["content"])
 
 
@@ -76,15 +76,14 @@ async def chat_completion_async(message_list):
     return answer
 
 
-
 if __name__ == "__main__":
     st.set_page_config(
         page_title="Chat Html", layout="wide", page_icon=":speech_balloon:"
     )
     st.title("Chat Html")
-    
+
     x = clickable_select(["星火V3", "星火V2", "gpt3-16k"])
-    st.write(f'you select {x}')
+    st.write(f"you select {x}")
 
     x = did_click(
         '<a href="#" id="reset">Reset</a> / <a href="#" id="foo">Waha</a>', None
@@ -99,7 +98,6 @@ if __name__ == "__main__":
     #         st.write(f"⏳ {seconds} seconds have passed")
     #         time.sleep(1)
     #     st.write("✔️ 1 minute over!")
-
 
     uploaded_file = st.sidebar.file_uploader(
         "Upload your html file here...", type=["html"]
@@ -152,11 +150,12 @@ if __name__ == "__main__":
             render_copy_html_button(code_block[0])
 
     if st.session_state.messages[-1]["role"] == "user":
-
         tic = time.time()
-        answer = asyncio.run(chat_completion_async(message_list=st.session_state.messages))
+        answer = asyncio.run(
+            chat_completion_async(message_list=st.session_state.messages)
+        )
 
-        st.write(f'used {time.time() - tic}')
+        st.write(f"used {time.time() - tic}")
 
         # response = chat_completion(
         #     message_list=st.session_state.messages,
@@ -165,11 +164,11 @@ if __name__ == "__main__":
         #     stream=True,
         # )
         # answer = response["choices"][0]["message"]["content"]
-        if 'messages' in st.session_state:
+        if "messages" in st.session_state:
             st.session_state.messages.append({"role": "assistant", "content": answer})
         else:
-            st.warning('no messages!')
-        st.write(f'fin {time.time()}')
+            st.warning("no messages!")
+        st.write(f"fin {time.time()}")
         st.chat_message("assistant").write(answer)
 
         code_block = extract_code(answer)
