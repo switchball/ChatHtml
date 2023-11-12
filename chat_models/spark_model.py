@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import uuid
+import streamlit as st
 from datetime import datetime
 from enum import Enum
 from time import mktime
@@ -198,6 +199,8 @@ class SparkClient:
 
     # 测试中的方法，应该在基类中实现比较好
     async def chat_completion_async(self, message_list, stream=True):
-        async for msg_info in self.achat(message_list):
-            print(msg_info)
+        with st.spinner():
+            slot = st.empty()
+            async for msg_info in self.achat(message_list):
+                slot.markdown(self.answer_full_content)
         return msg_info.msg_content
